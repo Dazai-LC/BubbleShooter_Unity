@@ -74,23 +74,27 @@ public class Shooter : MonoBehaviour
 
         Vector2 currentPos = startPos;
         Vector2 currentDir = direction;
+        float totalLength = 0f; // Biến để tính tổng độ dài tia
 
-        // Chỉ quét Wall và TopWall để laser không bị chặn bởi bóng đang chờ/bóng nòng
         int mask = LayerMask.GetMask("Wall", "TopWall", "Bubble");
 
         for (int i = 0; i <= maxBounces; i++)
         {
             RaycastHit2D hit = Physics2D.Raycast(currentPos + currentDir * 0.1f, currentDir, 30f, mask);
 
+            Vector2 nextPos;
             if (hit.collider != null)
             {
+                nextPos = hit.point;
+                totalLength += Vector2.Distance(currentPos, nextPos); // Cộng dồn độ dài đoạn này
+
                 trajectoryLine.positionCount++;
-                trajectoryLine.SetPosition(i + 1, hit.point);
+                trajectoryLine.SetPosition(i + 1, nextPos);
 
                 if (hit.collider.CompareTag("Wall"))
                 {
                     currentDir = Vector2.Reflect(currentDir, hit.normal);
-                    currentPos = hit.point;
+                    currentPos = nextPos;
                 }
                 else
                 {
@@ -99,11 +103,31 @@ public class Shooter : MonoBehaviour
             }
             else
             {
+                nextPos = currentPos + currentDir * 30f;
+                totalLength += Vector2.Distance(currentPos, nextPos);
+
                 trajectoryLine.positionCount++;
-                trajectoryLine.SetPosition(i + 1, currentPos + currentDir * 30f);
+                trajectoryLine.SetPosition(i + 1, nextPos);
                 break;
             }
         }
+
+        // 1. Mật độ chấm: 1 mét có bao nhiêu chấm (vặn cái này để thưa/dày)
+        float dotDensity = 1f;
+
+        // 2. Chốt cứng trục Y = 1 để luôn chỉ có DUY NHẤT 1 hàng chấm
+        trajectoryLine.material.mainTextureScale = new Vector2(totalLength * dotDensity, 1f);
+
+        // 3. ĐỘ TO: Đây mới là nút vặn để chấm to ra và hết bẹp!
+        // Nếu dùng Shader Unlit/Transparent, tăng cái này là chấm to và tròn ngay.
+        float lineSize = 0.5f;
+        trajectoryLine.startWidth = lineSize;
+        trajectoryLine.endWidth = lineSize;
+
+        // Mẹo nhỏ: Nếu chấm vẫn hơi bẹp ngang, fen đừng chỉnh Y nữa, 
+        // mà hãy giảm dotDensity xuống một chút (ví dụ từ 3.5 xuống 2.8).
+
+
     }
 
     private void Shoot(Vector2 direction)
