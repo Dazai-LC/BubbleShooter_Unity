@@ -41,31 +41,29 @@ public class Bubble : MonoBehaviour
 
     public void Drop()
     {
-        Debug.Log($"<color=yellow>Hàm Drop đã chạy cho quả bóng: {gameObject.name}</color>");
+        // Thưởng 200 điểm cho mỗi quả bóng rụng (mồ côi)
+        if (ScoreManager.Instance != null) ScoreManager.Instance.AddScore(200);
 
+        Debug.Log($"<color=yellow>Hàm Drop đã chạy cho quả bóng: {gameObject.name}</color>");
         IsSnapped = false;
 
-        // Đổi Layer
         int fallingLayer = LayerMask.NameToLayer("FallingBubble");
         if (fallingLayer != -1)
         {
             gameObject.layer = fallingLayer;
-            Debug.Log($"Da doi Layer sang ID: {fallingLayer}");
-        }
-        else
-        {
-            Debug.LogError("KHÔNG TÌM THẤY Layer 'FallingBubble' trong Tags and Layers!");
         }
 
         rb.bodyType = RigidbodyType2D.Dynamic;
         rb.gravityScale = 1.5f;
-
         Destroy(gameObject, 2f);
     }
 
-    public void Pop()
+    // Thêm tham số multiplier để nhân điểm khi nổ combo
+    public void Pop(int multiplier = 1)
     {
-        // QUAN TRỌNG: Tắt ngay va chạm để thuật toán rụng bóng không quét nhầm vào "xác" của quả bóng này
+        // Điểm = 100 x hệ số combo
+        if (ScoreManager.Instance != null) ScoreManager.Instance.AddScore(100 * multiplier);
+
         col.enabled = false;
 
         if (popEffectPrefab != null)

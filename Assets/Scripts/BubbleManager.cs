@@ -107,9 +107,15 @@ public class BubbleManager : MonoBehaviour
 
         if (matchedBubbles.Count >= 3)
         {
+            // BƯỚC MỚI: Tính toán hệ số Combo dựa trên số lượng bóng tìm được
+            int comboMultiplier = 1;
+            if (matchedBubbles.Count >= 5) comboMultiplier = 2; // Nổ 5 quả trở lên x2 điểm
+            if (matchedBubbles.Count >= 8) comboMultiplier = 3; // Nổ 8 quả trở lên x3 điểm
+
             foreach (Bubble b in matchedBubbles)
             {
-                b.Pop();
+                // Truyền hệ số nhân vào hàm Pop đã sửa ở trên
+                b.Pop(comboMultiplier);
             }
 
             // Truyền danh sách bóng vừa nổ vào để BFS bỏ qua chúng
