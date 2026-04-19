@@ -16,6 +16,7 @@ public class Bubble : MonoBehaviour
     private Rigidbody2D rb;
     private Collider2D col; // Cache lại collider
 
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -37,6 +38,14 @@ public class Bubble : MonoBehaviour
         IsSnapped = true;
         rb.linearVelocity = Vector2.zero;
         rb.bodyType = RigidbodyType2D.Kinematic;
+
+        // TÌM CÁI LƯỚI: Tìm Object có chứa script GridGenerator
+        GridGenerator grid = FindFirstObjectByType<GridGenerator>();
+        if (grid != null)
+        {
+            // Biến quả bóng này thành con của Grid để nó tụt xuống cùng Grid
+            transform.SetParent(grid.transform);
+        }
     }
 
     public void Drop()
@@ -74,14 +83,27 @@ public class Bubble : MonoBehaviour
         Destroy(gameObject);
     }
 
+    // Trong Bubble.cs, sửa lại hàm này:
     private void OnCollisionEnter2D(Collision2D collision)
     {
         if (!IsMoving) return;
 
         if (collision.gameObject.CompareTag("Bubble") || collision.gameObject.CompareTag("TopWall"))
         {
-            StopAndSnap();
+            // 1. Dừng bóng lại trước
+            IsMoving = false;
+            rb.linearVelocity = Vector2.zero;
+            rb.bodyType = RigidbodyType2D.Kinematic;
+
+            // 2. Gán vào lưới NGAY LẬP TỨC để nó cùng hệ quy chiếu với đám bóng cũ
+            GridGenerator grid = FindFirstObjectByType<GridGenerator>();
+            if (grid != null) transform.SetParent(grid.transform);
+
+            // 3. Bây giờ mới gọi Manager xử lý snap và nổ
+            IsSnapped = true;
             BubbleManager.Instance.ProcessSnappedBubble(this);
         }
     }
+
+    // Xóa hàm StopAndSnap() cũ vì ta đã đưa logic vào OnCollision cho chuẩn xác hơn
 }

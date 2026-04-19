@@ -16,6 +16,11 @@ public class GridGenerator : MonoBehaviour
     [SerializeField] private float bubbleDiameter = 0.9f;
     [SerializeField] private Transform startPoint;
 
+    [Header("Auto Drop Settings")]
+    [SerializeField] private float dropInterval = 5f;   // 5 giây tụt 1 lần
+    [SerializeField] private float dropDistance = 0.5f; // Tụt xuống nửa mét
+    private float dropTimer = 0f;
+
     [Header("Prefabs (0: Green, 1: Red, 2: Yellow)")]
     [SerializeField] private Bubble[] bubblePrefabs;
 
@@ -39,6 +44,30 @@ public class GridGenerator : MonoBehaviour
         {
             GenerateGridFromCustomData();
         }
+    }
+
+    // Trong GridGenerator.cs
+    private void Update()
+    {
+        if (Time.timeScale > 0)
+        {
+            dropTimer += Time.deltaTime;
+
+            if (dropTimer >= dropInterval)
+            {
+                // Reset timer TRƯỚC khi chạy hàm để tránh bị gọi chồng chéo
+                dropTimer = 0f;
+                DropGrid();
+            }
+        }
+    }
+
+    private void DropGrid()
+    {
+        // Thêm dòng này để kiểm tra xem có bao nhiêu thằng đang gọi hàm này
+        Debug.Log($"<color=red>[ID: {gameObject.GetInstanceID()}]</color> Lưới tụt lúc: " + Time.time);
+
+        transform.Translate(Vector3.down * dropDistance, Space.World);
     }
 
     // ==========================================
@@ -106,6 +135,7 @@ public class GridGenerator : MonoBehaviour
     private void SpawnBubbleAt(int id, Vector2 position)
     {
         Bubble prefab = bubblePrefabs[id];
+        // Tham số cuối cùng 'transform' chính là gán GridGenerator làm cha
         Bubble newBubble = Instantiate(prefab, position, Quaternion.identity, transform);
         newBubble.IsSnapped = true;
     }

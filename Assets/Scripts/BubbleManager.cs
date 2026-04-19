@@ -7,7 +7,8 @@ public class BubbleManager : MonoBehaviour
 
     [Header("Grid & Match Settings")]
     [Tooltip("Đường kính bóng (PPU) - Phải bằng với số trong GridGenerator")]
-    [SerializeField] private float bubbleDiameter = 1f;
+    [SerializeField] private float bubbleDiameter = 0.9f;
+
     [Tooltip("Kéo object StartPoint vào đây để lấy mốc trần nhà")]
     [SerializeField] private Transform startPoint;
 
@@ -17,20 +18,30 @@ public class BubbleManager : MonoBehaviour
         else Destroy(gameObject);
     }
 
+    // ==========================================
+    // 0. ĐIỀU PHỐI CHÍNH
+    // ==========================================
     public void ProcessSnappedBubble(Bubble bubble)
     {
+        // Đảm bảo bóng đã thuộc về Grid để localPosition hoạt động chính xác
+        GridGenerator grid = FindFirstObjectByType<GridGenerator>();
+        if (grid != null && bubble.transform.parent != grid.transform)
+        {
+            bubble.transform.SetParent(grid.transform);
+        }
+
         SnapBubblePerfectly(bubble);
         CheckMatches(bubble);
     }
 
     // ==========================================
-    // 1. CĂN CHỈNH BÓNG (Giữ nguyên - Hoạt động tốt)
+    // 1. CĂN CHỈNH BÓNG (Sử dụng Local Position)
     // ==========================================
     private void SnapBubblePerfectly(Bubble newBubble)
     {
-        Collider2D[] touches = Physics2D.OverlapCircleAll(newBubble.transform.position, bubbleDiameter, LayerMask.GetMask("Bubble", "TopWall"));
+        // Tìm hàng xóm gần nhất bằng Physics (World) để lấy mốc
+        Collider2D[] touches = Physics2D.OverlapCircleAll(newBubble.transform.position, bubbleDiameter, LayerMask.GetMask("Bubble"));
 
-        bool hitCeiling = false;
         Bubble closestNeighbor = null;
         float minDist = float.MaxValue;
 
@@ -38,32 +49,32 @@ public class BubbleManager : MonoBehaviour
         {
             if (hit.gameObject == newBubble.gameObject) continue;
 
-            if (hit.CompareTag("TopWall")) hitCeiling = true;
-            else
+            Bubble neighbor = hit.GetComponent<Bubble>();
+            if (neighbor != null && neighbor.IsSnapped && neighbor.gameObject.layer != LayerMask.NameToLayer("FallingBubble"))
             {
-                Bubble neighbor = hit.GetComponent<Bubble>();
-                if (neighbor != null && neighbor.IsSnapped)
+                // Tính khoảng cách theo LOCAL để đồng bộ
+                float d = Vector2.Distance(newBubble.transform.localPosition, neighbor.transform.localPosition);
+                if (d < minDist)
                 {
-                    float d = Vector2.Distance(newBubble.transform.position, neighbor.transform.position);
-                    if (d < minDist)
-                    {
-                        minDist = d;
-                        closestNeighbor = neighbor;
-                    }
+                    minDist = d;
+                    closestNeighbor = neighbor;
                 }
             }
         }
 
-        if (hitCeiling && startPoint != null)
+        // Logic Snap ưu tiên trần nhà
+        if (startPoint != null && newBubble.transform.localPosition.y >= startPoint.localPosition.y - (bubbleDiameter * 0.4f))
         {
-            float xDist = newBubble.transform.position.x - startPoint.position.x;
+            float xDist = newBubble.transform.localPosition.x - startPoint.localPosition.x;
             int col = Mathf.RoundToInt(xDist / bubbleDiameter);
-            float snapX = startPoint.position.x + (col * bubbleDiameter);
-            newBubble.transform.position = new Vector2(snapX, startPoint.position.y);
+            float snapX = startPoint.localPosition.x + (col * bubbleDiameter);
+
+            newBubble.transform.localPosition = new Vector2(snapX, startPoint.localPosition.y);
+            return;
         }
         else if (closestNeighbor != null)
         {
-            Vector2 center = closestNeighbor.transform.position;
+            Vector2 center = closestNeighbor.transform.localPosition;
             float w = bubbleDiameter;
             float h = bubbleDiameter * Mathf.Sqrt(3) / 2f;
             float wHalf = w / 2f;
@@ -75,23 +86,26 @@ public class BubbleManager : MonoBehaviour
                 new Vector2(wHalf, -h), new Vector2(-wHalf, -h)
             };
 
-            Vector2 bestPos = newBubble.transform.position;
+            Vector2 bestLocalPos = newBubble.transform.localPosition;
             float minPosDist = float.MaxValue;
 
             foreach (Vector2 offset in hexOffsets)
             {
-                Vector2 testPos = center + offset;
-                Collider2D col = Physics2D.OverlapCircle(testPos, bubbleDiameter * 0.2f, LayerMask.GetMask("Bubble"));
-                if (col != null && col.gameObject != newBubble.gameObject) continue;
+                Vector2 testLocalPos = center + offset;
 
-                float d = Vector2.Distance(newBubble.transform.position, testPos);
+                // Check đè (dùng World position để check vật lý chuẩn nhất)
+                Vector2 testWorldPos = newBubble.transform.parent.TransformPoint(testLocalPos);
+                Collider2D overlapping = Physics2D.OverlapCircle(testWorldPos, bubbleDiameter * 0.2f, LayerMask.GetMask("Bubble"));
+                if (overlapping != null && overlapping.gameObject != newBubble.gameObject) continue;
+
+                float d = Vector2.Distance(newBubble.transform.localPosition, testLocalPos);
                 if (d < minPosDist)
                 {
                     minPosDist = d;
-                    bestPos = testPos;
+                    bestLocalPos = testLocalPos;
                 }
             }
-            newBubble.transform.position = bestPos;
+            newBubble.transform.localPosition = bestLocalPos;
         }
     }
 
@@ -107,18 +121,16 @@ public class BubbleManager : MonoBehaviour
 
         if (matchedBubbles.Count >= 3)
         {
-            // BƯỚC MỚI: Tính toán hệ số Combo dựa trên số lượng bóng tìm được
             int comboMultiplier = 1;
-            if (matchedBubbles.Count >= 5) comboMultiplier = 2; // Nổ 5 quả trở lên x2 điểm
-            if (matchedBubbles.Count >= 8) comboMultiplier = 3; // Nổ 8 quả trở lên x3 điểm
+            if (matchedBubbles.Count >= 5) comboMultiplier = 2;
+            if (matchedBubbles.Count >= 8) comboMultiplier = 3;
 
             foreach (Bubble b in matchedBubbles)
             {
-                // Truyền hệ số nhân vào hàm Pop đã sửa ở trên
                 b.Pop(comboMultiplier);
             }
 
-            // Truyền danh sách bóng vừa nổ vào để BFS bỏ qua chúng
+            // Sau khi nổ, kiểm tra rụng dựa trên danh sách bóng còn lại
             DropFloatingBubbles(matchedBubbles, allSnapped);
         }
     }
@@ -137,7 +149,7 @@ public class BubbleManager : MonoBehaviour
     }
 
     // ==========================================
-    // 3. TÌM & RỤNG BÓNG MỒ CÔI
+    // 3. TÌM & RỤNG BÓNG MỒ CÔI (Bản Fix Local)
     // ==========================================
     private void DropFloatingBubbles(List<Bubble> destroyedBubbles, List<Bubble> allSnapped)
     {
@@ -150,19 +162,14 @@ public class BubbleManager : MonoBehaviour
 
             bool isAtCeiling = false;
 
-            Collider2D[] touches = Physics2D.OverlapCircleAll(b.transform.position, bubbleDiameter * 0.8f);
-            foreach (Collider2D hit in touches)
+            // Check dính trần dựa vào localPosition của startPoint
+            if (startPoint != null)
             {
-                if (hit.CompareTag("TopWall"))
+                // So sánh tọa độ Y cục bộ của bóng và trần nhà
+                if (Mathf.Abs(b.transform.localPosition.y - startPoint.localPosition.y) < (bubbleDiameter * 0.5f))
                 {
                     isAtCeiling = true;
-                    break;
                 }
-            }
-
-            if (startPoint != null && Mathf.Abs(b.transform.position.y - startPoint.position.y) < (bubbleDiameter * 0.5f))
-            {
-                isAtCeiling = true;
             }
 
             if (isAtCeiling)
@@ -197,18 +204,21 @@ public class BubbleManager : MonoBehaviour
     }
 
     // ==========================================
-    // HÀM HỖ TRỢ
+    // HÀM HỖ TRỢ (Dùng Local Position)
     // ==========================================
     private List<Bubble> GetMathematicalNeighbors(Bubble target, List<Bubble> allSnapped)
     {
         List<Bubble> neighbors = new List<Bubble>();
-        float maxDistance = bubbleDiameter * 1.35f;
+        // 1.2f là con số vàng cho lưới hexagon
+        float maxDistance = bubbleDiameter * 1.2f;
 
         foreach (Bubble b in allSnapped)
         {
-            if (b != target)
+            if (b != target && b != null)
             {
-                if (Vector2.Distance(target.transform.position, b.transform.position) <= maxDistance)
+                // QUAN TRỌNG: Tính khoảng cách theo Local để không bị ảnh hưởng khi lưới tụt
+                float dist = Vector2.Distance(target.transform.localPosition, b.transform.localPosition);
+                if (dist <= maxDistance)
                 {
                     neighbors.Add(b);
                 }
@@ -219,12 +229,16 @@ public class BubbleManager : MonoBehaviour
 
     private List<Bubble> GetAllFilesInScene()
     {
-        // [CẬP NHẬT UNITY 6000] Thay thế FindObjectsOfType bằng FindObjectsByType
         Bubble[] arr = FindObjectsByType<Bubble>(FindObjectsSortMode.None);
         List<Bubble> list = new List<Bubble>();
+        int fallingLayer = LayerMask.NameToLayer("FallingBubble");
+
         foreach (Bubble b in arr)
         {
-            if (b.IsSnapped) list.Add(b);
+            if (b.IsSnapped && b.gameObject.layer != fallingLayer)
+            {
+                list.Add(b);
+            }
         }
         return list;
     }
