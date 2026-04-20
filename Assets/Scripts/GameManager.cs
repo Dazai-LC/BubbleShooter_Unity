@@ -22,8 +22,8 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("Dazai ơi, thua rồi!");
         endGamePanel.SetActive(true); // Hiện cái bảng thông báo lên
-        resultText.text = "THUA RỒI NHA!";
-        resultText.color = Color.red;
+        //resultText.text = "THUA RỒI NHA!";
+        //resultText.color = Color.red;
 
         Time.timeScale = 0f; // Dừng toàn bộ game lại (bóng ngừng bay)
     }

@@ -142,6 +142,9 @@ public class Shooter : MonoBehaviour
         currentBubble.Fire(direction, fireSpeed);
         currentBubble = null;
 
+        // --- GỌI HUD: BÁO CÁO GIẢM ĐẠN ---
+        if (HUDManager.Instance != null) HUDManager.Instance.UseAmmo();
+
         Invoke(nameof(ReloadBubble), 0.5f);
     }
 

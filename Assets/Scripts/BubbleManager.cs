@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Microsoft.Unity.VisualStudio.Editor;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class BubbleManager : MonoBehaviour
@@ -12,6 +13,13 @@ public class BubbleManager : MonoBehaviour
     [Tooltip("Kéo object StartPoint vào đây để lấy mốc trần nhà")]
     [SerializeField] private Transform startPoint;
 
+    [Header("UI References")]
+    public GameObject winPanel; // Kéo WinPanel vào đây
+    public GridGenerator gridGen;
+
+    // Khai báo biến này ở đầu file, cùng khu vực với các biến khác
+    private int currentChainCombo = 0;
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
@@ -24,10 +32,9 @@ public class BubbleManager : MonoBehaviour
     public void ProcessSnappedBubble(Bubble bubble)
     {
         // Đảm bảo bóng đã thuộc về Grid để localPosition hoạt động chính xác
-        GridGenerator grid = FindFirstObjectByType<GridGenerator>();
-        if (grid != null && bubble.transform.parent != grid.transform)
+        if (gridGen != null && bubble.transform.parent != gridGen.transform)
         {
-            bubble.transform.SetParent(grid.transform);
+            bubble.transform.SetParent(gridGen.transform);
         }
 
         SnapBubblePerfectly(bubble);
@@ -39,7 +46,6 @@ public class BubbleManager : MonoBehaviour
     // ==========================================
     private void SnapBubblePerfectly(Bubble newBubble)
     {
-        // Tìm hàng xóm gần nhất bằng Physics (World) để lấy mốc
         Collider2D[] touches = Physics2D.OverlapCircleAll(newBubble.transform.position, bubbleDiameter, LayerMask.GetMask("Bubble"));
 
         Bubble closestNeighbor = null;
@@ -52,7 +58,6 @@ public class BubbleManager : MonoBehaviour
             Bubble neighbor = hit.GetComponent<Bubble>();
             if (neighbor != null && neighbor.IsSnapped && neighbor.gameObject.layer != LayerMask.NameToLayer("FallingBubble"))
             {
-                // Tính khoảng cách theo LOCAL để đồng bộ
                 float d = Vector2.Distance(newBubble.transform.localPosition, neighbor.transform.localPosition);
                 if (d < minDist)
                 {
@@ -62,7 +67,6 @@ public class BubbleManager : MonoBehaviour
             }
         }
 
-        // Logic Snap ưu tiên trần nhà
         if (startPoint != null && newBubble.transform.localPosition.y >= startPoint.localPosition.y - (bubbleDiameter * 0.4f))
         {
             float xDist = newBubble.transform.localPosition.x - startPoint.localPosition.x;
@@ -93,7 +97,6 @@ public class BubbleManager : MonoBehaviour
             {
                 Vector2 testLocalPos = center + offset;
 
-                // Check đè (dùng World position để check vật lý chuẩn nhất)
                 Vector2 testWorldPos = newBubble.transform.parent.TransformPoint(testLocalPos);
                 Collider2D overlapping = Physics2D.OverlapCircle(testWorldPos, bubbleDiameter * 0.2f, LayerMask.GetMask("Bubble"));
                 if (overlapping != null && overlapping.gameObject != newBubble.gameObject) continue;
@@ -121,17 +124,40 @@ public class BubbleManager : MonoBehaviour
 
         if (matchedBubbles.Count >= 3)
         {
-            int comboMultiplier = 1;
-            if (matchedBubbles.Count >= 5) comboMultiplier = 2;
-            if (matchedBubbles.Count >= 8) comboMultiplier = 3;
+            // 1. TĂNG CHUỖI COMBO (Bắn trúng liên tiếp)
+            currentChainCombo++;
+
+            // 2. TÍNH ĐIỂM
+            int basePoints = matchedBubbles.Count * 10; // Điểm cơ bản
+            int simultaneousBonus = (matchedBubbles.Count - 3) * 15; // Nổ càng to thưởng càng gắt
+            int pointsEarned = (basePoints + simultaneousBonus) * currentChainCombo; // Nhân với hệ số liên hoàn
+
+            // 3. BÁO CÁO LÊN UI
+            if (HUDManager.Instance != null)
+            {
+                HUDManager.Instance.AddScore(pointsEarned);
+
+                // Chỉ hiện chữ Combo giữa màn hình khi nổ từ 4 quả trở lên HOẶC đang có chuỗi x2 trở lên
+                if (matchedBubbles.Count > 3 || currentChainCombo > 1)
+                {
+                    HUDManager.Instance.ShowComboAction(currentChainCombo, matchedBubbles.Count, pointsEarned);
+                }
+            }
 
             foreach (Bubble b in matchedBubbles)
             {
-                b.Pop(comboMultiplier);
+                // Truyền chuỗi combo vào Pop để sau này fen có thể làm âm thanh nổ to nhỏ theo Combo
+                b.Pop(currentChainCombo);
             }
 
-            // Sau khi nổ, kiểm tra rụng dựa trên danh sách bóng còn lại
             DropFloatingBubbles(matchedBubbles, allSnapped);
+            Invoke("CheckWinCondition", 0.3f);
+        }
+        else
+        {
+            // BẮN TRƯỢT -> ĐỨT CHUỖI COMBO, RESET VỀ 0
+            currentChainCombo = 0;
+            Invoke("CheckWinCondition", 0.1f);
         }
     }
 
@@ -149,7 +175,7 @@ public class BubbleManager : MonoBehaviour
     }
 
     // ==========================================
-    // 3. TÌM & RỤNG BÓNG MỒ CÔI (Bản Fix Local)
+    // 3. TÌM & RỤNG BÓNG MỒ CÔI
     // ==========================================
     private void DropFloatingBubbles(List<Bubble> destroyedBubbles, List<Bubble> allSnapped)
     {
@@ -160,19 +186,7 @@ public class BubbleManager : MonoBehaviour
         {
             if (destroyedBubbles.Contains(b)) continue;
 
-            bool isAtCeiling = false;
-
-            // Check dính trần dựa vào localPosition của startPoint
-            if (startPoint != null)
-            {
-                // So sánh tọa độ Y cục bộ của bóng và trần nhà
-                if (Mathf.Abs(b.transform.localPosition.y - startPoint.localPosition.y) < (bubbleDiameter * 0.5f))
-                {
-                    isAtCeiling = true;
-                }
-            }
-
-            if (isAtCeiling)
+            if (startPoint != null && Mathf.Abs(b.transform.localPosition.y - startPoint.localPosition.y) < (bubbleDiameter * 0.5f))
             {
                 roots.Enqueue(b);
                 connectedToCeiling.Add(b);
@@ -201,22 +215,23 @@ public class BubbleManager : MonoBehaviour
                 b.Drop();
             }
         }
+
+        // GỌI KIỂM TRA THẮNG TẠI ĐÂY
+        Invoke("CheckWinCondition", 0.3f);
     }
 
     // ==========================================
-    // HÀM HỖ TRỢ (Dùng Local Position)
+    // HÀM HỖ TRỢ
     // ==========================================
     private List<Bubble> GetMathematicalNeighbors(Bubble target, List<Bubble> allSnapped)
     {
         List<Bubble> neighbors = new List<Bubble>();
-        // 1.2f là con số vàng cho lưới hexagon
         float maxDistance = bubbleDiameter * 1.2f;
 
         foreach (Bubble b in allSnapped)
         {
             if (b != target && b != null)
             {
-                // QUAN TRỌNG: Tính khoảng cách theo Local để không bị ảnh hưởng khi lưới tụt
                 float dist = Vector2.Distance(target.transform.localPosition, b.transform.localPosition);
                 if (dist <= maxDistance)
                 {
@@ -241,5 +256,45 @@ public class BubbleManager : MonoBehaviour
             }
         }
         return list;
+    }
+
+    // ==========================================
+    // 4. KIỂM TRA ĐIỀU KIỆN THẮNG CUỘC
+    // ==========================================
+    public void CheckWinCondition()
+    {
+        int bubbleCount = 0;
+        if (gridGen == null) return;
+
+        int fallingLayer = LayerMask.NameToLayer("FallingBubble");
+
+        foreach (Transform child in gridGen.transform)
+        {
+            Bubble b = child.GetComponent<Bubble>();
+
+            // ĐIỀU KIỆN CỐT LÕI: Có script Bubble + Đang Active + KHÔNG PHẢI bóng đang rơi
+            if (b != null && child.gameObject.activeSelf && child.gameObject.layer != fallingLayer)
+            {
+                bubbleCount++;
+            }
+        }
+
+        // --- GỌI HUD: CẬP NHẬT MỤC TIÊU CÒN LẠI ---
+        if (HUDManager.Instance != null) HUDManager.Instance.UpdateGridBalls(bubbleCount);
+
+        if (bubbleCount <= 0)
+        {
+            Debug.Log("<color=green>!!! CHIẾN THẮNG !!! Đã dọn sạch bàn.</color>");
+            Invoke("ShowWinUI", 0.5f);
+        }
+        else
+        {
+            Debug.Log($"<color=orange>Lưới còn {bubbleCount} quả bóng.</color>");
+        }
+    }
+
+    private void ShowWinUI()
+    {
+        if (winPanel != null) winPanel.SetActive(true);
     }
 }

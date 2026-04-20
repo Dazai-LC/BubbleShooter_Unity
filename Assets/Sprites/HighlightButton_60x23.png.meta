@@ -1,10 +1,19 @@
 fileFormatVersion: 2
-guid: 8b652517c02275244bf4beb49eb8cfa3
+guid: f661b4dfe4e017344967a735976cb99a
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 1674353676598910932
-    second: MenusBox_34x34_0
+      213: -3373058400213887287
+    second: HighlightButton_60x23_0
+  - first:
+      213: 2223191029193699495
+    second: HighlightButton_60x23_1
+  - first:
+      213: -2966827166489892275
+    second: HighlightButton_60x23_2
+  - first:
+      213: -7695757078853839710
+    second: HighlightButton_60x23_3
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -51,7 +60,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 64
+  spritePixelsToUnits: 32
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -75,7 +84,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 0
+    textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -113,13 +122,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: MenusBox_34x34_0
+      name: HighlightButton_60x23_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 0
-        width: 34
-        height: 34
+        y: 15
+        width: 8
+        height: 8
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +137,74 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4df1c0a3ccf7c3710800000000000000
-      internalID: 1674353676598910932
+      spriteID: 9c69a98914d7031d0800000000000000
+      internalID: -3373058400213887287
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HighlightButton_60x23_1
+      rect:
+        serializedVersion: 2
+        x: 52
+        y: 15
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a0fcea467c5ade10800000000000000
+      internalID: 2223191029193699495
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HighlightButton_60x23_2
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4a24673966b3d6d0800000000000000
+      internalID: -2966827166489892275
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HighlightButton_60x23_3
+      rect:
+        serializedVersion: 2
+        x: 52
+        y: 0
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a4183de5bd233590800000000000000
+      internalID: -7695757078853839710
       vertices: []
       indices: 
       edges: []
@@ -148,7 +223,10 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      MenusBox_34x34_0: 1674353676598910932
+      HighlightButton_60x23_0: -3373058400213887287
+      HighlightButton_60x23_1: 2223191029193699495
+      HighlightButton_60x23_2: -2966827166489892275
+      HighlightButton_60x23_3: -7695757078853839710
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
